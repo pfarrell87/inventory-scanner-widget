@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventory Scanner Widget</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .inventory-widget {
+            max-width: 100%;
+        }
+
+        .item-panel {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+
+        .item-list {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #fff;
+        }
+
+        .item-row {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 5px;
+        }
+
+        .item-row:last-child {
+            border-bottom: none;
+        }
+
+        .quantity-section {
+            margin-top: 15px;
+        }
+
+        button {
+            background-color: #0099ff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #007acc;
+        }
+
+        .remove-button {
+            background-color: #ff3333;
+            padding: 4px 8px;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+
+        .remove-button:hover {
+            background-color: #cc0000;
+        }
+
+        input[type="number"] {
+            padding: 8px;
+            width: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        h3 {
+            margin-top: 0;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="inventory-widget">
+        <!-- Current Item Panel -->
+        <div class="item-panel">
+            <div id="current-item">
+                <p>Scan a QR code to begin</p>
+            </div>
+            
+            <div class="quantity-section">
+                <label for="quantity">Quantity on Hand: </label>
+                <input type="number" id="quantity" min="0">
+                <button id="add-button">Add Item</button>
+            </div>
+        </div>
+        
+        <!-- Items List -->
+        <div class="item-list">
+            <h3>Items Added</h3>
+            <div id="items-container">
+                <p>No items added yet</p>
+            </div>
+        </div>
+        
+        <!-- Hidden field to pass data back to Jotform -->
+        <input type="hidden" id="inventory-data">
+    </div>
+
+    <script>
+        // Sample inventory data (this will be replaced with your actual data)
+        const inventoryData = [
+            { partNumber: "ABC123", manufacturer: "Acme", description: "Widget A", category: "Parts", salePrice: "19.99" },
+            { partNumber: "XYZ789", manufacturer: "GlobalTech", description: "Connector B", category: "Electrical", salePrice: "12.50" }
+        ];
+
+        // Array to store scanned items
+        let scannedItems = [];
+        let currentItem = null;
+
+        // Function to initialize the widget
+        function initWidget() {
+            // Get URL parameters to check for part number
+            const urlParams = new URLSearchParams(window.location.search);
+            const partNumber = urlParams.get('partNumber');
+            
+            if (partNumber) {
+                lookupItem(partNumber);
+            }
+            
+            // Set up event listeners
+            document.getElementById('add-button').addEventListener('click', addCurrentItem);
+            
+            // Listen for messages from parent (Jotform)
+            window.addEventListener('message', function(event) {
+                // Handle any messages from the parent form
+                if (event.data && event.data.type === 'getInventoryData') {
+                    sendDataToParent();
+                }
+            });
+            
+            // Send message to parent that we're ready
+            window.parent.postMessage({
+                type: 'ready',
+                height: document.body.scrollHeight
+            }, '*');
+        }
+
+        // Function to look up an item by part number
+        function lookupItem(partNumber) {
+            // In real implementation, this would query your inventory database
+            const item = inventoryData.find(item => item.partNumber === partNumber);
+            
+            if (item) {
+                currentItem = item;
+                displayCurrentItem();
+            } else {
+                document.getElementById('current-item').innerHTML = 
+                    '<p>Item not found: ' + partNumber + '</p>';
+                currentItem = null;
+            }
+        }
+
+        // Display current item details
+        function displayCurrentItem() {
+            if (!currentItem) return;
+            
+            document.getElementById('current-item').innerHTML = `
+                <h4>${currentItem.manufacturer} - ${currentItem.partNumber}</h4>
+                <p>${currentItem.description}</p>
+                <p>Category: ${currentItem.category}</p>
+                <p>Price: $${currentItem.salePrice}</p>
+            `;
+        }
+
+        // Add current item to the list
+        function addCurrentItem() {
+            if (!currentItem) {
+                alert('Please scan an item first');
+                return;
+            }
+            
+            const quantity = document.getElementById('quantity').value;
+            if (!quantity || quantity <= 0) {
+                alert('Please enter a valid quantity');
+                return;
+            }
+            
+            // Add to our list
+            scannedItems.push({
+                partNumber: currentItem.partNumber,
+                manufacturer: currentItem.manufacturer,
+                description: currentItem.description,
+                quantity: parseInt(quantity, 10)
+            });
+            
+            // Update display
+            updateItemsList();
+            
+            // Update hidden field with JSON data
+            document.getElementById('inventory-data').value = JSON.stringify(scannedItems);
+            
+            // Send data to parent
+            sendDataToParent();
+            
+            // Reset for next item
+            document.getElementById('current-item').innerHTML = '<p>Scan a QR code to begin</p>';
+            document.getElementById('quantity').value = '';
+            currentItem = null;
+            
+            // Resize iframe if needed
+            resizeWidget();
+        }
+
+        // Update the items list display
+        function updateItemsList() {
+            const container = document.getElementById('items-container');
+            
+            if (scannedItems.length === 0) {
+                container.innerHTML = '<p>No items added yet</p>';
+                return;
+            }
+            
+            let html = '';
+            scannedItems.forEach((item, index) => {
+                html += `
+                    <div class="item-row">
+                        <strong>${item.partNumber}</strong> - ${item.description}
+                        <br>Quantity: ${item.quantity}
+                        <button class="remove-button" onclick="removeItem(${index})">Remove</button>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Remove an item from the list
+        function removeItem(index) {
+            scannedItems.splice(index, 1);
+            updateItemsList();
+            
+            // Update hidden field
+            document.getElementById('inventory-data').value = JSON.stringify(scannedItems);
+            
+            // Send updated data to parent
+            sendDataToParent();
+            
+            // Resize iframe if needed
+            resizeWidget();
+        }
+
+        // Send data to parent Jotform
+        function sendDataToParent() {
+            window.parent.postMessage({
+                type: 'inventoryData',
+                data: scannedItems
+            }, '*');
+        }
+
+        // Resize the widget to fit content
+        function resizeWidget() {
+            window.parent.postMessage({
+                type: 'resize',
+                height: document.body.scrollHeight
+            }, '*');
+        }
+
+        // Initialize when document is ready
+        document.addEventListener('DOMContentLoaded', initWidget);
+    </script>
+</body>
+</html>
