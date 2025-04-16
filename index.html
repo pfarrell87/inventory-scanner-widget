@@ -112,15 +112,24 @@
     </div>
 
     <script>
-        // Sample inventory data (this will be replaced with your actual data)
-        const inventoryData = [
-            { partNumber: "ABC123", manufacturer: "Acme", description: "Widget A", category: "Parts", salePrice: "19.99" },
-            { partNumber: "XYZ789", manufacturer: "GlobalTech", description: "Connector B", category: "Electrical", salePrice: "12.50" }
-        ];
-
-        // Array to store scanned items
+        // Variable to store scanned items
         let scannedItems = [];
         let currentItem = null;
+
+        // Function to fetch inventory item data from your Google Sheet
+        function fetchInventoryItem(partNumber) {
+            const apiUrl = 'https://script.google.com/macros/s/AKfycby3e4EWcQUHBRpc0j1CMw_n7ZPj0GuIFzoh6z1d86TeE03v0bu_FYpZstpee2Sey18FqA/exec?partNumber=' + encodeURIComponent(partNumber);
+            
+            return fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === "success" && data.item) {
+                        return data.item;
+                    } else {
+                        throw new Error('Item not found');
+                    }
+                });
+        }
 
         // Function to initialize the widget
         function initWidget() {
@@ -152,17 +161,18 @@
 
         // Function to look up an item by part number
         function lookupItem(partNumber) {
-            // In real implementation, this would query your inventory database
-            const item = inventoryData.find(item => item.partNumber === partNumber);
+            document.getElementById('current-item').innerHTML = '<p>Loading item data...</p>';
             
-            if (item) {
-                currentItem = item;
-                displayCurrentItem();
-            } else {
-                document.getElementById('current-item').innerHTML = 
-                    '<p>Item not found: ' + partNumber + '</p>';
-                currentItem = null;
-            }
+            fetchInventoryItem(partNumber)
+                .then(item => {
+                    currentItem = item;
+                    displayCurrentItem();
+                })
+                .catch(error => {
+                    document.getElementById('current-item').innerHTML = 
+                        '<p>Item not found: ' + partNumber + '</p>';
+                    currentItem = null;
+                });
         }
 
         // Display current item details
@@ -170,10 +180,10 @@
             if (!currentItem) return;
             
             document.getElementById('current-item').innerHTML = `
-                <h4>${currentItem.manufacturer} - ${currentItem.partNumber}</h4>
-                <p>${currentItem.description}</p>
-                <p>Category: ${currentItem.category}</p>
-                <p>Price: $${currentItem.salePrice}</p>
+                <h4>${currentItem["Manufacturer"]} - ${currentItem["Part Number"]}</h4>
+                <p>${currentItem["Description"]}</p>
+                <p>Category: ${currentItem["Category"]}</p>
+                <p>Price: $${currentItem["Sale Price"]}</p>
             `;
         }
 
@@ -192,9 +202,9 @@
             
             // Add to our list
             scannedItems.push({
-                partNumber: currentItem.partNumber,
-                manufacturer: currentItem.manufacturer,
-                description: currentItem.description,
+                partNumber: currentItem["Part Number"],
+                manufacturer: currentItem["Manufacturer"],
+                description: currentItem["Description"],
                 quantity: parseInt(quantity, 10)
             });
             
