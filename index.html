@@ -143,7 +143,7 @@ function fetchInventoryItem(partNumber) {
         });
 }
 
-  // Function to initialize the widget
+// Function to initialize the widget
 function initWidget() {
     // Debug information
     console.log("Widget initialized");
@@ -158,25 +158,23 @@ function initWidget() {
     window.addEventListener('message', function(event) {
         console.log("Received message from parent:", event.data);
         
-        // Check if we're getting data from Jotform
-        if (event.data && event.data.type === 'getInventoryData') {
-            sendDataToParent();
-        }
-        
-        // Check if we're getting URL parameters from Jotform
-        if (event.data && event.data.urlParameters) {
-            console.log("Got URL parameters from Jotform:", event.data.urlParameters);
-            const partNumber = event.data.urlParameters.partNumber;
-            if (partNumber) {
-                console.log("Looking up part:", partNumber);
+        // Check for form data
+        if (event.data && event.data.formData) {
+            console.log("Form data received:", event.data.formData);
+            // Look for our hidden field
+            if (event.data.formData.partNumber) {
+                const partNumber = event.data.formData.partNumber;
+                console.log("Part number from form data:", partNumber);
+                document.getElementById('current-item').innerHTML += 
+                    '<p style="color:green;">Part number found: ' + partNumber + '</p>';
                 lookupItem(partNumber);
             }
         }
     });
     
-    // Send message to parent asking for URL parameters
+    // Request form data from Jotform
     window.parent.postMessage({
-        type: 'getUrlParameters'
+        type: 'getFormData'
     }, '*');
     
     // Send message that we're ready
