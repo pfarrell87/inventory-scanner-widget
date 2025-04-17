@@ -116,48 +116,72 @@
         let scannedItems = [];
         let currentItem = null;
 
-        // Function to fetch inventory item data from your Google Sheet
-        function fetchInventoryItem(partNumber) {
-            const apiUrl = 'https://script.google.com/macros/s/AKfycby3e4EWcQUHBRpc0j1CMw_n7ZPj0GuIFzoh6z1d86TeE03v0bu_FYpZstpee2Sey18FqA/exec?partNumber=' + encodeURIComponent(partNumber);
-            
-            return fetch(apiUrl)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === "success" && data.item) {
-                        return data.item;
-                    } else {
-                        throw new Error('Item not found');
-                    }
-                });
-        }
-
-        // Function to initialize the widget
-        function initWidget() {
-            // Get URL parameters to check for part number
-            const urlParams = new URLSearchParams(window.location.search);
-            const partNumber = urlParams.get('partNumber');
-            
-            if (partNumber) {
-                lookupItem(partNumber);
+      // Function to fetch inventory item data from your Google Sheet
+function fetchInventoryItem(partNumber) {
+    const apiUrl = 'https://script.google.com/macros/s/AKfycby3e4EWcQUHBRpc0j1CMw_n7ZPj0GuIFzoh6z1d86TeE03v0bu_FYpZstpee2Sey18FqA/exec?partNumber=' + encodeURIComponent(partNumber);
+    
+    console.log("Fetching from API URL:", apiUrl);
+    
+    return fetch(apiUrl)
+        .then(response => {
+            console.log("API response received");
+            return response.json();
+        })
+        .then(data => {
+            console.log("API data:", data);
+            if (data.status === "success" && data.item) {
+                return data.item;
+            } else {
+                throw new Error('Item not found');
             }
-            
-            // Set up event listeners
-            document.getElementById('add-button').addEventListener('click', addCurrentItem);
-            
-            // Listen for messages from parent (Jotform)
-            window.addEventListener('message', function(event) {
-                // Handle any messages from the parent form
-                if (event.data && event.data.type === 'getInventoryData') {
-                    sendDataToParent();
-                }
-            });
-            
-            // Send message to parent that we're ready
-            window.parent.postMessage({
-                type: 'ready',
-                height: document.body.scrollHeight
-            }, '*');
+        })
+        .catch(error => {
+            console.error("API error:", error);
+            document.getElementById('current-item').innerHTML += 
+                '<p style="color:red;">Error: ' + error.message + '</p>';
+            throw error;
+        });
+}
+
+    // Function to initialize the widget
+function initWidget() {
+    // Get URL parameters to check for part number
+    const urlParams = new URLSearchParams(window.location.search);
+    const partNumber = urlParams.get('partNumber');
+    
+    // Debug information
+    console.log("URL parameters:", window.location.search);
+    console.log("Part number from URL:", partNumber);
+    
+    if (partNumber) {
+        console.log("Looking up part:", partNumber);
+        lookupItem(partNumber);
+    } else {
+        console.log("No part number found in URL");
+    }
+    
+    // Set up event listeners
+    document.getElementById('add-button').addEventListener('click', addCurrentItem);
+    
+    // More debugging
+    document.getElementById('current-item').innerHTML += 
+        '<p style="color:blue;">Debug: URL=' + window.location.href + '</p>';
+    
+    // Listen for messages from parent (Jotform)
+    window.addEventListener('message', function(event) {
+        // Handle any messages from the parent form
+        console.log("Received message from parent:", event.data);
+        if (event.data && event.data.type === 'getInventoryData') {
+            sendDataToParent();
         }
+    });
+    
+    // Send message to parent that we're ready
+    window.parent.postMessage({
+        type: 'ready',
+        height: document.body.scrollHeight
+    }, '*');
+}
 
         // Function to look up an item by part number
         function lookupItem(partNumber) {
