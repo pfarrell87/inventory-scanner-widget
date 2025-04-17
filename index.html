@@ -143,40 +143,43 @@ function fetchInventoryItem(partNumber) {
         });
 }
 
-    // Function to initialize the widget
+  // Function to initialize the widget
 function initWidget() {
-    // Get URL parameters to check for part number
-    const urlParams = new URLSearchParams(window.location.search);
-    const partNumber = urlParams.get('partNumber');
-    
     // Debug information
-    console.log("URL parameters:", window.location.search);
-    console.log("Part number from URL:", partNumber);
-    
-    if (partNumber) {
-        console.log("Looking up part:", partNumber);
-        lookupItem(partNumber);
-    } else {
-        console.log("No part number found in URL");
-    }
+    console.log("Widget initialized");
+    document.getElementById('current-item').innerHTML = 
+        '<p>Scan a QR code to begin</p>' +
+        '<p style="color:blue;">Debug: URL=' + window.location.href + '</p>';
     
     // Set up event listeners
     document.getElementById('add-button').addEventListener('click', addCurrentItem);
     
-    // More debugging
-    document.getElementById('current-item').innerHTML += 
-        '<p style="color:blue;">Debug: URL=' + window.location.href + '</p>';
-    
     // Listen for messages from parent (Jotform)
     window.addEventListener('message', function(event) {
-        // Handle any messages from the parent form
         console.log("Received message from parent:", event.data);
+        
+        // Check if we're getting data from Jotform
         if (event.data && event.data.type === 'getInventoryData') {
             sendDataToParent();
         }
+        
+        // Check if we're getting URL parameters from Jotform
+        if (event.data && event.data.urlParameters) {
+            console.log("Got URL parameters from Jotform:", event.data.urlParameters);
+            const partNumber = event.data.urlParameters.partNumber;
+            if (partNumber) {
+                console.log("Looking up part:", partNumber);
+                lookupItem(partNumber);
+            }
+        }
     });
     
-    // Send message to parent that we're ready
+    // Send message to parent asking for URL parameters
+    window.parent.postMessage({
+        type: 'getUrlParameters'
+    }, '*');
+    
+    // Send message that we're ready
     window.parent.postMessage({
         type: 'ready',
         height: document.body.scrollHeight
