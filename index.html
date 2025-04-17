@@ -1,312 +1,278 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Scanner Widget</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-        }
-
-        .inventory-widget {
-            max-width: 100%;
-        }
-
-        .item-panel {
-            border: 1px solid #ddd;
-            padding: 15px;
-            margin-bottom: 15px;
-            border-radius: 4px;
-            background-color: #f9f9f9;
-        }
-
-        .item-list {
-            border: 1px solid #ddd;
-            padding: 15px;
-            border-radius: 4px;
-            max-height: 300px;
-            overflow-y: auto;
-            background-color: #fff;
-        }
-
-        .item-row {
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            margin-bottom: 5px;
-        }
-
-        .item-row:last-child {
-            border-bottom: none;
-        }
-
-        .quantity-section {
-            margin-top: 15px;
-        }
-
-        button {
-            background-color: #0099ff;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        button:hover {
-            background-color: #007acc;
-        }
-
-        .remove-button {
-            background-color: #ff3333;
-            padding: 4px 8px;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-
-        .remove-button:hover {
-            background-color: #cc0000;
-        }
-
-        input[type="number"] {
-            padding: 8px;
-            width: 100px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-
-        h3 {
-            margin-top: 0;
-            color: #333;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Inventory Scanner Widget</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+    .inventory-widget {
+      max-width: 100%;
+    }
+    .item-panel {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 4px;
+      background-color: #f9f9f9;
+    }
+    .item-list {
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 4px;
+      max-height: 300px;
+      overflow-y: auto;
+      background-color: #fff;
+    }
+    .item-row {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 5px;
+    }
+    .item-row:last-child {
+      border-bottom: none;
+    }
+    .quantity-section {
+      margin-top: 15px;
+    }
+    button {
+      background-color: #0099ff;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #007acc;
+    }
+    .remove-button {
+      background-color: #ff3333;
+      padding: 4px 8px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    .remove-button:hover {
+      background-color: #cc0000;
+    }
+    input[type="number"], input[type="text"] {
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      margin-top: 5px;
+      margin-bottom: 5px;
+    }
+    h3 {
+      margin-top: 0;
+      color: #333;
+    }
+  </style>
 </head>
 <body>
-    <div class="inventory-widget">
-        <!-- Current Item Panel -->
-        <div class="item-panel">
-            <div id="current-item">
-                <p>Scan a QR code to begin</p>
-            </div>
-            
-            <div class="quantity-section">
-                <label for="quantity">Quantity on Hand: </label>
-                <input type="number" id="quantity" min="0">
-                <button id="add-button">Add Item</button>
-            </div>
-        </div>
-        
-        <!-- Items List -->
-        <div class="item-list">
-            <h3>Items Added</h3>
-            <div id="items-container">
-                <p>No items added yet</p>
-            </div>
-        </div>
-        
-        <!-- Hidden field to pass data back to Jotform -->
-        <input type="hidden" id="inventory-data">
+  <div class="inventory-widget">
+    <!-- Current Item Panel -->
+    <div class="item-panel">
+      <div id="current-item">
+        <label for="manual-search">Search for item:</label><br>
+        <input type="text" id="manual-search" placeholder="Part number, description, or category" />
+        <button onclick="searchInventory()">Search</button>
+        <hr />
+        <p>Scan a QR code to begin</p>
+      </div>
+
+      <div class="quantity-section">
+        <label for="quantity">Quantity on Hand: </label>
+        <input type="number" id="quantity" min="0" />
+        <button id="add-button">Add Item</button>
+      </div>
     </div>
 
-    <script>
-        // Variable to store scanned items
-        let scannedItems = [];
-        let currentItem = null;
+    <!-- Items List -->
+    <div class="item-list">
+      <h3>Items Added</h3>
+      <div id="items-container">
+        <p>No items added yet</p>
+      </div>
+    </div>
 
-      // Function to fetch inventory item data from your Google Sheet
-function fetchInventoryItem(partNumber) {
-    const apiUrl = 'https://script.google.com/macros/s/AKfycby3e4EWcQUHBRpc0j1CMw_n7ZPj0GuIFzoh6z1d86TeE03v0bu_FYpZstpee2Sey18FqA/exec?partNumber=' + encodeURIComponent(partNumber);
-    
-    console.log("Fetching from API URL:", apiUrl);
-    
-    return fetch(apiUrl)
-        .then(response => {
-            console.log("API response received");
-            return response.json();
-        })
-        .then(data => {
-            console.log("API data:", data);
-            if (data.status === "success" && data.item) {
-                return data.item;
-            } else {
-                throw new Error('Item not found');
-            }
-        })
-        .catch(error => {
-            console.error("API error:", error);
-            document.getElementById('current-item').innerHTML += 
-                '<p style="color:red;">Error: ' + error.message + '</p>';
-            throw error;
+    <!-- Hidden field to pass data back to Jotform -->
+    <input type="hidden" id="inventory-data" />
+  </div>
+
+  <script>
+    let scannedItems = [];
+    let currentItem = null;
+
+    const baseUrl = 'https://script.google.com/macros/s/AKfycby3e4EWcQUHBRpc0j1CMw_n7ZPj0GuIFzoh6z1d86TeE03v0bu_FYpZstpee2Sey18FqA/exec';
+
+    function fetchInventoryItem(partNumber) {
+      const apiUrl = `${baseUrl}?partNumber=${encodeURIComponent(partNumber)}`;
+      console.log("Fetching:", apiUrl);
+      return fetch(apiUrl)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success" && data.item) {
+            return data.item;
+          } else {
+            throw new Error("Item not found");
+          }
         });
-}
+    }
 
-// Function to initialize the widget
-function initWidget() {
-    // Debug information
-    console.log("Widget initialized");
-    document.getElementById('current-item').innerHTML = 
-        '<p>Scan a QR code to begin</p>' +
-        '<p style="color:blue;">Debug: URL=' + window.location.href + '</p>';
-    
-    // Set up event listeners
-    document.getElementById('add-button').addEventListener('click', addCurrentItem);
-    
-    // Listen for messages from parent (Jotform)
-    window.addEventListener('message', function(event) {
-        console.log("Received message from parent:", event.data);
-        
-        // Check for form data
-        if (event.data && event.data.formData) {
-            console.log("Form data received:", event.data.formData);
-            // Look for our hidden field
-            if (event.data.formData.partNumber) {
-                const partNumber = event.data.formData.partNumber;
-                console.log("Part number from form data:", partNumber);
-                document.getElementById('current-item').innerHTML += 
-                    '<p style="color:green;">Part number found: ' + partNumber + '</p>';
-                lookupItem(partNumber);
-            }
-        }
-    });
-    
-    // Request form data from Jotform
-    window.parent.postMessage({
-        type: 'getFormData'
-    }, '*');
-    
-    // Send message that we're ready
-    window.parent.postMessage({
-        type: 'ready',
-        height: document.body.scrollHeight
-    }, '*');
-}
+    function searchInventory() {
+      const query = document.getElementById("manual-search").value.trim();
+      if (!query) {
+        alert("Enter a search term.");
+        return;
+      }
 
-        // Function to look up an item by part number
-        function lookupItem(partNumber) {
-            document.getElementById('current-item').innerHTML = '<p>Loading item data...</p>';
-            
-            fetchInventoryItem(partNumber)
-                .then(item => {
-                    currentItem = item;
-                    displayCurrentItem();
-                })
-                .catch(error => {
-                    document.getElementById('current-item').innerHTML = 
-                        '<p>Item not found: ' + partNumber + '</p>';
-                    currentItem = null;
-                });
-        }
+      const searchUrl = `${baseUrl}?search=${encodeURIComponent(query)}`;
+      document.getElementById("current-item").innerHTML = `<p>Searching for: <strong>${query}</strong>...</p>`;
 
-        // Display current item details
-        function displayCurrentItem() {
-            if (!currentItem) return;
-            
-            document.getElementById('current-item').innerHTML = `
-                <h4>${currentItem["Manufacturer"]} - ${currentItem["Part Number"]}</h4>
-                <p>${currentItem["Description"]}</p>
-                <p>Category: ${currentItem["Category"]}</p>
-                <p>Price: $${currentItem["Sale Price"]}</p>
-            `;
-        }
-
-        // Add current item to the list
-        function addCurrentItem() {
-            if (!currentItem) {
-                alert('Please scan an item first');
-                return;
-            }
-            
-            const quantity = document.getElementById('quantity').value;
-            if (!quantity || quantity <= 0) {
-                alert('Please enter a valid quantity');
-                return;
-            }
-            
-            // Add to our list
-            scannedItems.push({
-                partNumber: currentItem["Part Number"],
-                manufacturer: currentItem["Manufacturer"],
-                description: currentItem["Description"],
-                quantity: parseInt(quantity, 10)
-            });
-            
-            // Update display
-            updateItemsList();
-            
-            // Update hidden field with JSON data
-            document.getElementById('inventory-data').value = JSON.stringify(scannedItems);
-            
-            // Send data to parent
-            sendDataToParent();
-            
-            // Reset for next item
-            document.getElementById('current-item').innerHTML = '<p>Scan a QR code to begin</p>';
-            document.getElementById('quantity').value = '';
+      fetch(searchUrl)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success" && data.item) {
+            currentItem = data.item;
+            displayCurrentItem();
+          } else {
+            document.getElementById("current-item").innerHTML = `<p>No match for: ${query}</p>`;
             currentItem = null;
-            
-            // Resize iframe if needed
-            resizeWidget();
-        }
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          document.getElementById("current-item").innerHTML = `<p style="color:red;">Error during search</p>`;
+        });
+    }
 
-        // Update the items list display
-        function updateItemsList() {
-            const container = document.getElementById('items-container');
-            
-            if (scannedItems.length === 0) {
-                container.innerHTML = '<p>No items added yet</p>';
-                return;
-            }
-            
-            let html = '';
-            scannedItems.forEach((item, index) => {
-                html += `
-                    <div class="item-row">
-                        <strong>${item.partNumber}</strong> - ${item.description}
-                        <br>Quantity: ${item.quantity}
-                        <button class="remove-button" onclick="removeItem(${index})">Remove</button>
-                    </div>
-                `;
-            });
-            
-            container.innerHTML = html;
-        }
+    function lookupItem(partNumber) {
+      document.getElementById("current-item").innerHTML = "<p>Loading item data...</p>";
+      fetchInventoryItem(partNumber)
+        .then((item) => {
+          currentItem = item;
+          displayCurrentItem();
+        })
+        .catch(() => {
+          document.getElementById("current-item").innerHTML = `<p>Item not found: ${partNumber}</p>`;
+          currentItem = null;
+        });
+    }
 
-        // Remove an item from the list
-        function removeItem(index) {
-            scannedItems.splice(index, 1);
-            updateItemsList();
-            
-            // Update hidden field
-            document.getElementById('inventory-data').value = JSON.stringify(scannedItems);
-            
-            // Send updated data to parent
-            sendDataToParent();
-            
-            // Resize iframe if needed
-            resizeWidget();
-        }
+    function displayCurrentItem() {
+      if (!currentItem) return;
+      document.getElementById("current-item").innerHTML = `
+        <h4>${currentItem["Manufacturer"]} - ${currentItem["Part Number"]}</h4>
+        <p>${currentItem["Description"]}</p>
+        <p>Category: ${currentItem["Category"]}</p>
+        <p>Price: $${currentItem["Sale Price"]}</p>
+      `;
+    }
 
-        // Send data to parent Jotform
-        function sendDataToParent() {
-            window.parent.postMessage({
-                type: 'inventoryData',
-                data: scannedItems
-            }, '*');
-        }
+    function addCurrentItem() {
+      if (!currentItem) {
+        alert("Please scan or search an item first");
+        return;
+      }
 
-        // Resize the widget to fit content
-        function resizeWidget() {
-            window.parent.postMessage({
-                type: 'resize',
-                height: document.body.scrollHeight
-            }, '*');
-        }
+      const quantity = document.getElementById("quantity").value;
+      if (!quantity || quantity <= 0) {
+        alert("Please enter a valid quantity");
+        return;
+      }
 
-        // Initialize when document is ready
-        document.addEventListener('DOMContentLoaded', initWidget);
-    </script>
+      scannedItems.push({
+        partNumber: currentItem["Part Number"],
+        manufacturer: currentItem["Manufacturer"],
+        description: currentItem["Description"],
+        quantity: parseInt(quantity, 10),
+      });
+
+      updateItemsList();
+      document.getElementById("inventory-data").value = JSON.stringify(scannedItems);
+      sendDataToParent();
+
+      // Reset
+      document.getElementById("quantity").value = "";
+      currentItem = null;
+      document.getElementById("current-item").innerHTML = `
+        <label for="manual-search">Search for item:</label><br>
+        <input type="text" id="manual-search" placeholder="Part number, description, or category" />
+        <button onclick="searchInventory()">Search</button>
+        <hr />
+        <p>Scan a QR code to begin</p>
+      `;
+    }
+
+    function updateItemsList() {
+      const container = document.getElementById("items-container");
+      if (scannedItems.length === 0) {
+        container.innerHTML = "<p>No items added yet</p>";
+        return;
+      }
+
+      let html = "";
+      scannedItems.forEach((item, index) => {
+        html += `
+          <div class="item-row">
+            <strong>${item.partNumber}</strong> - ${item.description}
+            <br>Quantity: ${item.quantity}
+            <button class="remove-button" onclick="removeItem(${index})">Remove</button>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+    }
+
+    function removeItem(index) {
+      scannedItems.splice(index, 1);
+      updateItemsList();
+      document.getElementById("inventory-data").value = JSON.stringify(scannedItems);
+      sendDataToParent();
+    }
+
+    function sendDataToParent() {
+      window.parent.postMessage(
+        {
+          type: "inventoryData",
+          data: scannedItems,
+        },
+        "*"
+      );
+    }
+
+    function resizeWidget() {
+      window.parent.postMessage(
+        {
+          type: "resize",
+          height: document.body.scrollHeight,
+        },
+        "*"
+      );
+    }
+
+    function initWidget() {
+      console.log("Widget initialized");
+      document.getElementById("add-button").addEventListener("click", addCurrentItem);
+
+      window.addEventListener("message", function (event) {
+        if (event.data && event.data.formData && event.data.formData.partNumber) {
+          const partNumber = event.data.formData.partNumber;
+          lookupItem(partNumber);
+        }
+      });
+
+      window.parent.postMessage({ type: "getFormData" }, "*");
+      window.parent.postMessage({ type: "ready", height: document.body.scrollHeight }, "*");
+    }
+
+    document.addEventListener("DOMContentLoaded", initWidget);
+  </script>
 </body>
 </html>
